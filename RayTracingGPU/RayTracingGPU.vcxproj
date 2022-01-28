@@ -78,7 +78,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="Main.cu" />
-    <CudaCompile Include="kernel.cu" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="vec3.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

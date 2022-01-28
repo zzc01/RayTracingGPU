@@ -1,5 +1,6 @@
 #include <iostream>
 #include <time.h>
+#include "vec3.h"
 
 #define checkCudaErrors(val) check_cuda((val), #val, __FILE__, __LINE__)
 
@@ -16,15 +17,13 @@ void check_cuda(int result, char const* const func, const char* const file, int 
 }
 
 // Render
-__global__ void render(float* fb, int max_x, int max_y)
+__global__ void render(vec3* fb, int max_x, int max_y)
 {
 	int i = threadIdx.x + blockIdx.x * blockDim.x;
 	int j = threadIdx.y + blockIdx.y * blockDim.y;
 	if ((i >= max_x) || (j >= max_y)) return;
-	int pixel_index = 3 * (j * max_x + i);
-	fb[pixel_index + 0] = double(i) / max_x;
-	fb[pixel_index + 1] = double(j) / max_y;
-	fb[pixel_index + 2] = 0.25;
+	int pixel_index = (j * max_x + i);
+	fb[pixel_index] = vec3(double(i) / max_x, double(j) / max_y, 0.25f);
 }
 
 
@@ -40,13 +39,15 @@ int main()
 	std::cerr << "in " << tx << "x" << ty << " blocks" << std::endl;
 
 	int num_pixels = nx * ny;
-	size_t fb_size = 3 * num_pixels * sizeof(float);
 
 	// allocate FB 
-	float* fb;
+	color3* fb;
+	size_t fb_size = num_pixels * sizeof(color3);
 	checkCudaErrors(cudaMallocManaged((void**)&fb, fb_size));
-	clock_t start, stop; 
-	start = clock();
+
+	// profiling 
+	clock_t time0, time1, time2; 
+	time0 = clock();
 
 	// Render 
 	dim3 blocks(nx / tx + 1, ny / ty + 1);
@@ -54,9 +55,11 @@ int main()
 	render << <blocks, threads >> > (fb, nx, ny);
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
-	stop = clock();
-	double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
-	std::cerr << "took " << timer_seconds << "sec." << std::endl; 
+
+	// profiling 
+	time1 = clock();
+	double timer_seconds = ((double)(time1 - time0)) ;
+	std::cerr << "Cuda took " << timer_seconds << " msec." << std::endl;
 
 
 	// Output FB as Image 
@@ -65,17 +68,20 @@ int main()
 	{
 		for (int i = 0; i < nx; i++)
 		{
-			size_t pixel_index = 3 * (j * nx + i);
-			double r = fb[pixel_index + 0];
-			double g = fb[pixel_index + 1];
-			double b = fb[pixel_index + 2];
-			int ir = static_cast<int>(255.99 * r);
-			int ig = static_cast<int>(255.99 * g);
-			int ib = static_cast<int>(255.99 * b);
+			size_t pixel_index = (j * nx + i);
+			int ir = static_cast<int>(255.99 * fb[pixel_index].r());
+			int ig = static_cast<int>(255.99 * fb[pixel_index].g());
+			int ib = static_cast<int>(255.99 * fb[pixel_index].b());
 
 			std::cout << ir << ' ' << ig << ' ' << ib << std::endl; 
 		}
 	}
+
+
+	// profiling 
+	time2 = clock();
+	timer_seconds = ((double)(time2 - time1)) / CLOCKS_PER_SEC;
+	std::cerr << "Ouput took " << timer_seconds << " sec." << std::endl;
 
 	std::cerr << "Done!" << std::endl;
 }
