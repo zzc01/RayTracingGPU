@@ -80,6 +80,7 @@
     <CudaCompile Include="Main.cu" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="camera.h" />
     <ClInclude Include="hittable.h" />
     <ClInclude Include="hittable_list.h" />
     <ClInclude Include="ray.h" />
