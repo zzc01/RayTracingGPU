@@ -22,10 +22,6 @@ __device__ bool hittable_list::hit(const ray& r, double tmin, double tmax, hit_r
 	float closest_so_far = tmax; 
 	for (int i = 0; i < list_size; i++)
 	{
-		// use list[i] to access the hit function. 
-		// I thought list is ptr to ptr
-		// list[] is ptr 
-		// *list[] is the object 
 		if (list[i]->hit(r, tmin, closest_so_far, temp_rec))
 		{
 			hit_anything = true; 

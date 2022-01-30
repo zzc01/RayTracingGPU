@@ -5,6 +5,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <iostream>
+#include <curand_kernel.h>
 
 class vec3
 {
@@ -169,5 +170,35 @@ __host__ __device__ inline vec3 unit_vector(const vec3& v)
 {
 	return v / v.length(); 
 }
+
+#define RANDVEC3 vec3(curand_uniform(local_rand_state), curand_uniform(local_rand_state), curand_uniform(local_rand_state))
+
+__device__ inline vec3 random_in_unit_sphere(curandState* local_rand_state)
+{
+	vec3 p;
+	do
+	{
+		// currand_uniform return [0, 1]
+		// 2.0 * [0, 1] - 1 makes [-1, 1]
+		//p = 2.0 * vec3(curand_uniform(local_rand_state), curand_uniform(local_rand_state), curand_uniform(local_rand_state)) - vec3(1, 1, 1);
+		p = 2.0 * RANDVEC3 - vec3(1, 1, 1); 
+	} while (p.squared_length() >= 1.0);
+	return p; 
+}
+
+__device__ inline vec3 random_unit_sphere(curandState* local_rand_state)
+{
+	return unit_vector(random_in_unit_sphere(local_rand_state));
+}
+
+__device__ inline vec3 random_in_hemisphere(curandState* local_rand_state, const vec3& normal)
+{
+	vec3 in_unit_sphere = random_in_unit_sphere(local_rand_state);
+	if (dot(in_unit_sphere, normal) > 0.0)
+		return in_unit_sphere;
+	else 
+		return -in_unit_sphere;
+}
+
 
 #endif

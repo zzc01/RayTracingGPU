@@ -22,22 +22,31 @@ void check_cuda(int result, char const* const func, const char* const file, int 
 	}
 }
 
-//// Render
-__device__ color3 ray_color(const ray& r, hittable** world)
+// Render
+__device__ color3 ray_color(const ray& r, hittable** world, curandState *local_rand_state)
 {
-	// why using pointer to pointer 
-	// this memory is in the gpu stack 
-	hit_record rec; 
-	if ((*world)->hit(r, 0.0, DBL_MAX, rec))
+	ray cur_ray = r; 
+	double cur_attenuation = 1.0; 
+	for (int i = 0; i < 50; i++)
 	{
-		return 0.5 * vec3(rec.normal.x() + 1.0f, rec.normal.y() + 1.0f, rec.normal.z() + 1.0f); 
+		hit_record rec;
+		if ((*world)->hit(cur_ray, 1e-17, DBL_MAX, rec))
+		{
+			//point3 target = rec.p + rec.normal + random_unit_sphere(local_rand_state);
+			point3 target = rec.p + random_in_hemisphere(local_rand_state, rec.normal);
+			cur_attenuation *= 0.5;
+			cur_ray = ray(rec.p, target - rec.p);
+		}
+		else
+		{
+			vec3 unit_direction = unit_vector(cur_ray.direction());
+			double t = 0.5 * (unit_direction.y() + 1.0);
+			vec3 color = (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0); 
+			return cur_attenuation * color;
+		}
 	}
-	else
-	{
-		vec3 unit_direction = unit_vector(r.direction()); 
-		double t = 0.5 * (unit_direction.y() + 1.0);
-		return (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
-	}
+	// exceeded recussion depth 
+	return vec3(0.0, 0.0, 0.0); 
 }
 
 __global__ void render_init(int max_x, int max_y, curandState* rand_state)
@@ -65,17 +74,19 @@ __global__ void render(vec3* fb, int max_x, int max_y,
 		double u = double(i + curand_uniform(&local_rand_state)) / double(max_x);
 		double v = double(j + curand_uniform(&local_rand_state)) / double(max_y);
 		ray r = (*cam)->get_ray(u, v); 
-		col += ray_color(r, world);
+		col += ray_color(r, world, &local_rand_state);
 	}
-	fb[pixel_index] = col / double(ns); 
+	// The state value will change? 
+	rand_state[pixel_index] = local_rand_state; 
+	col /= double(ns); 
+	col[0] = sqrt(col[0]); 
+	col[1] = sqrt(col[1]); 
+	col[2] = sqrt(col[2]); 
+	fb[pixel_index] = col; 
 }
 
 __global__ void create_world(hittable** d_list, hittable** d_world, camera** d_camera)
 {
-	// is it in purpose using pointer-to-pointer? 
-	// d_ naming 
-	// why detect 0 and 0 Idx 
-	// are these in the GPU? 
 	if (threadIdx.x == 0 && blockIdx.x == 0)
 	{
 		// this is to replace the vector<hitable> and append 
