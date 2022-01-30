@@ -14,17 +14,15 @@ Chapter 8.  Diffuse Materials<br />
 Notes:<br />
 1. The recurssive part was writen in iteration way. Can GPU Cuda do recurssion? 
 This requires to use stack memory when going deeper in the recussion. Saw online 
-only special GPU can do recurssion. Saw another discussion using template <depth>
+only special GPU can do recurssion. Saw another discussion using template \<depth>
 to do the recussion, quite smart.<br /> 
-
 2. The random vector<br /> 
-__device__ inline vec3 random_in_unit_sphere(curandState* local_rand_state)<br />
-cannot do __host__ because of the curand_uniform() called inside the function<br /> 
-
+\_\_device\_\__ inline vec3 random_in_unit_sphere(curandState* local_rand_state)<br />
+cannot do \__\_host\_\__ because of the curand_uniform() called inside the function<br /> 
 3. The reason for ptr to ptr for class object in the device<br /> 
 Is because of class object. If it were int or curandState use ptr.<br /> 
 But it is a class object use ptr to ptr... this could help of the use of parent-children virtual function.<br /> 
-color3* fb; the real intention is to build a number of color3 object.<br />  
+color3* fb; the real intention is to build a number of color3 object.<br />
 hittable** d_list; this could built a number of hittable* ptr ... for later use parent-children virtual function.<br /> 
  
  
