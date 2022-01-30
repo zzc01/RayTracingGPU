@@ -6,7 +6,7 @@
 #include "sphere.h"
 #include "camera.h"
 #include <curand_kernel.h>
-
+#include "material.h"
 
 #define checkCudaErrors(val) check_cuda((val), #val, __FILE__, __LINE__)
 
@@ -26,16 +26,23 @@ void check_cuda(int result, char const* const func, const char* const file, int 
 __device__ color3 ray_color(const ray& r, hittable** world, curandState *local_rand_state)
 {
 	ray cur_ray = r; 
-	double cur_attenuation = 1.0; 
+	point3 cur_attenuation = point3(1.0, 1.0, 1.0); 
 	for (int i = 0; i < 50; i++)
 	{
 		hit_record rec;
-		if ((*world)->hit(cur_ray, 1e-17, DBL_MAX, rec))
+		if ((*world)->hit(cur_ray, 1e-10, DBL_MAX, rec))
 		{
-			//point3 target = rec.p + rec.normal + random_unit_sphere(local_rand_state);
-			point3 target = rec.p + random_in_hemisphere(local_rand_state, rec.normal);
-			cur_attenuation *= 0.5;
-			cur_ray = ray(rec.p, target - rec.p);
+			ray scattered; 
+			point3 attenuation; 
+			if (rec.mat_ptr->scatter(cur_ray, rec, attenuation, scattered, local_rand_state))
+			{
+				cur_attenuation *= attenuation;
+				cur_ray = scattered;
+			}
+			else
+			{
+				return color3(0.0, 0.0, 0.0); 
+			}
 		}
 		else
 		{
@@ -90,9 +97,11 @@ __global__ void create_world(hittable** d_list, hittable** d_world, camera** d_c
 	if (threadIdx.x == 0 && blockIdx.x == 0)
 	{
 		// this is to replace the vector<hitable> and append 
-		*(d_list)	= new sphere(vec3(0, 0, -1), 0.5);
-		*(d_list+1) = new sphere(vec3(0, -100.5, -1), 100);
-		*d_world = new hittable_list(d_list, 2);
+		d_list[0] = new sphere(vec3(0, 0, -1), 0.5, new lambertian(color3(0.8, 0.3, 0.3)));
+		d_list[1] = new sphere(vec3(0, -100.5, -1), 100, new lambertian(color3(0.8, 0.8, 0.0)));
+		d_list[2] = new sphere(vec3(1.0, 0.0, -1), 0.5, new metal(color3(0.8, 0.6, 0.2), 1.0));
+		d_list[3] = new sphere(vec3(-1.0, 0.0, -1), 0.5, new metal(color3(0.8, 0.8, 0.8), 0.3));
+		*d_world = new hittable_list(d_list, 4);
 		*d_camera = new camera();
 	}
 }
@@ -100,8 +109,13 @@ __global__ void create_world(hittable** d_list, hittable** d_world, camera** d_c
 // cast to void** for cudaMemallocManaged 
 __global__ void free_world(hittable** d_list, hittable** d_world, camera** d_camera)
 {
-	delete* (d_list);
-	delete* (d_list+1);
+	for (int i = 0; i < 4; i++)
+	{
+		// d_list is a hittable ptr. suppose it does not have mat_ptr. 
+		// this requires to convert to sphere ptr ... this is pretty not manual 
+		delete ((sphere*)d_list[i])->mat_ptr;
+		delete d_list[i];
+	}
 	delete* (d_world);
 	delete* (d_camera);
 }
@@ -136,7 +150,7 @@ int main()
 
 	// world 
 	hittable** d_list; 
-	checkCudaErrors(cudaMalloc((void**)&d_list, 2 * sizeof(hittable*)));
+	checkCudaErrors(cudaMalloc((void**)&d_list, 4 * sizeof(hittable*)));
 	hittable** d_world; 
 	checkCudaErrors(cudaMalloc((void**)&d_world, sizeof(hittable*)));
 	camera** d_camera;

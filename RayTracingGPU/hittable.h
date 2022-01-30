@@ -2,13 +2,16 @@
 #ifndef HITABLEH
 #define HITABLEH
 
-#include "ray.h"
+//#include "ray.h"
+//#include "material.h"
+class material;
 
 struct hit_record
 {
 	point3 p;
 	vec3 normal; 
 	double t; 
+	material* mat_ptr; 
 	//bool front_face; 
 
 	//// this function cannot be reached by GPU

@@ -193,12 +193,16 @@ __device__ inline vec3 random_unit_sphere(curandState* local_rand_state)
 
 __device__ inline vec3 random_in_hemisphere(curandState* local_rand_state, const vec3& normal)
 {
-	vec3 in_unit_sphere = random_in_unit_sphere(local_rand_state);
+	vec3 in_unit_sphere = random_unit_sphere(local_rand_state);
 	if (dot(in_unit_sphere, normal) > 0.0)
 		return in_unit_sphere;
 	else 
 		return -in_unit_sphere;
 }
 
+__device__ inline vec3 reflect(const vec3& v, const vec3 n)
+{
+	return v - 2.0 * dot(v, n) * n; 
+}
 
 #endif

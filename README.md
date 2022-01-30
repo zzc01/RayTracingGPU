@@ -2,28 +2,40 @@
 A Ray Tracing practice project using GPU to speed up the rendering time. Following "Ray Tracing in One Weekend" and "Accelerated Ray Tracing in One Weekend in CUDA".
 
  
-Chapter 8.  Diffuse Materials<br />
-  8.1  A Simple Diffuse Material<br />
-  8.2  Limiting the Number of Child Rays<br />
-  8.3  Using Gamma Correction for Accurate Color Intensity<br />
-  8.4  Fixing Shadow Acne<br />
-  8.5  True Lambertian Reflection<br />
-  8.6  An Alternative Diffuse Formulation<br />
+Chapter 9.  Metal<br/>
+  9.1  An Abstract Class for Materials<br/>
+  9.2  A Data Structure to Describe Ray-Object Intersections<br/>
+  9.3  Modeling Light Scatter and Reflectance<br/>
+  9.4  Mirrored Light Reflection<br/>
+  9.5  A Scene with Metal Spheres<br/>
+  9.6  Fuzzy Reflection<br/>
+  
+  
+Notes:<br/>
+1. add material parent class. And children classes lambertian, metal.<br/>
+2. add reflect and scatter concept into these material classes.<br/> 
+3. add mat_ptr to hit_record, sphere object classes<br/>  
+4. New way to define d_list<br/> 
+d_list[0] = new sphere(vec3(0, 0, -1), 0.5, new lambertian(color3(0.8, 0.3, 0.3)));<br/>
+d_list[1] = new sphere(vec3(0, -100.5, -1), 100, new lambertian(color3(0.8, 0.8, 0.0)));<br/>
+5. 
+for (int i = 0; i < 4; i++)
+{
+	// d_list is a hittable ptr. suppose it does not have mat_ptr. 
+	// thus to convert to sphere ptr ... this is pretty not manual not common. 
+	delete ((sphere*)d_list[i])->mat_ptr;
+	delete d_list[i];
+}
+6. The cross #include can be complicated ?<br/>
+in hittable.h <br/>
+//#include "ray.h"<br/>
+//#include "material.h"<br/>
+class material;<br/>
+in material.h <br/>
+struct hit_record; <br/>
+#include "ray.h"<br/>
+//#include "hittable.h"<br/>
 
-
-Notes:<br />
-1. The recurssive part was writen in iteration way. Can GPU Cuda do recurssion? 
-This requires to use stack memory when going deeper in the recussion. Saw online 
-only special GPU can do recurssion. Saw another discussion using template \<depth>
-to do the recussion, quite smart.<br /> 
-2. The random vector<br /> 
-\_\_device\_\__ inline vec3 random_in_unit_sphere(curandState* local_rand_state)<br />
-cannot do \__\_host\_\__ because of the curand_uniform() called inside the function<br /> 
-3. The reason for ptr to ptr for class object in the device<br /> 
-Is because of class object. If it were int or curandState use ptr.<br /> 
-But it is a class object use ptr to ptr... this could help of the use of parent-children virtual function.<br /> 
-color3* fb; the real intention is to build a number of color3 object.<br />
-hittable** d_list; this could built a number of hittable* ptr ... for later use parent-children virtual function.<br /> 
  
  
 References:  <br />
