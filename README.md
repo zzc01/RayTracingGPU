@@ -12,26 +12,23 @@ Chapter 9.  Metal<br/>
   
   
 Notes:<br/>
-1. add material parent class. And children classes lambertian, metal.<br/>
-2. add reflect and scatter concept into these material classes.<br/> 
-3. add mat_ptr to hit_record, sphere object classes<br/>  
+1. Add material parent class. And children classes lambertian, metal.<br/>
+2. Add reflect and scatter concept into these material classes.<br/> 
+3. Add mat_ptr to hit_record, sphere object classes<br/>  
 4. New way to define d_list<br/> 
 d_list[0] = new sphere(vec3(0, 0, -1), 0.5, new lambertian(color3(0.8, 0.3, 0.3)));<br/>
 d_list[1] = new sphere(vec3(0, -100.5, -1), 100, new lambertian(color3(0.8, 0.8, 0.0)));<br/>
-5. 
-for (int i = 0; i < 4; i++)
-{
-	// d_list is a hittable ptr. suppose it does not have mat_ptr. 
-	// thus to convert to sphere ptr ... this is pretty not manual not common. 
-	delete ((sphere*)d_list[i])->mat_ptr;
-	delete d_list[i];
-}
+5. d_list is a hittable ptr. It does not have mat_ptr. Thus to convert to sphere ptr. This is pretty manual and not common.<br/>
+for (int i = 0; i < 4; i++)<br/>
+	delete ((sphere*)d_list[i])->mat_ptr;<br/>
+	delete d_list[i];<br/>
+}<br/>
 6. The cross #include can be complicated ?<br/>
-in hittable.h <br/>
+a) In hittable.h <br/>
 //#include "ray.h"<br/>
 //#include "material.h"<br/>
 class material;<br/>
-in material.h <br/>
+b) In material.h <br/>
 struct hit_record; <br/>
 #include "ray.h"<br/>
 //#include "hittable.h"<br/>
