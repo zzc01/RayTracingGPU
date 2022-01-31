@@ -80,7 +80,7 @@ __global__ void render(vec3* fb, int max_x, int max_y,
 	{
 		double u = double(i + curand_uniform(&local_rand_state)) / double(max_x);
 		double v = double(j + curand_uniform(&local_rand_state)) / double(max_y);
-		ray r = (*cam)->get_ray(u, v); 
+		ray r = (*cam)->get_ray(u, v, &local_rand_state);
 		col += ray_color(r, world, &local_rand_state);
 	}
 	// The state value will change? 
@@ -96,6 +96,7 @@ __global__ void create_world(hittable** d_list, hittable** d_world, camera** d_c
 {
 	if (threadIdx.x == 0 && blockIdx.x == 0)
 	{
+
 		// this is to replace the vector<hitable> and append 
 		d_list[0] = new sphere(vec3(0, -100.5, -1), 100, new lambertian(color3(0.8, 0.8, 0.0)));
 		d_list[1] = new sphere(vec3(0, 0, -1), 0.5, new lambertian(color3(0.1, 0.2, 0.5)));
@@ -103,7 +104,13 @@ __global__ void create_world(hittable** d_list, hittable** d_world, camera** d_c
 		d_list[3] = new sphere(vec3(-1.0, 0.0, -1), -0.45, new dieletric(1.5));
 		d_list[4] = new sphere(vec3(1.0, 0.0, -1), 0.5, new metal(color3(0.8, 0.6, 0.2), 0.0));
 		*d_world = new hittable_list(d_list, 5);
-		*d_camera = new camera(	point3(-2, 2, 1), point3(0, 0, -1), vec3(0, 1, 0), 90.0, double(nx)/double(ny));
+		// 
+		point3 lookfrom(3, 3, 2);
+		point3 lookat(0, 0, -1); 
+		vec3 vup(0, 1, 0); 
+		double dist_to_focus = (lookfrom - lookat).length(); 
+		double aperture = 2.0; 
+		*d_camera = new camera(	lookfrom, lookat, vup, 20.0, double(nx)/double(ny), aperture, dist_to_focus);
 	}
 }
 
