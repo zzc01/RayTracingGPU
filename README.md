@@ -32,7 +32,8 @@ b) In material.h <br/>
 struct hit_record; <br/>
 #include "ray.h"<br/>
 //#include "hittable.h"<br/>
-
+5. Profiling:<br/>
+a) 1864 msec<br/> 
  
  
 References:  <br />
