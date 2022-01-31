@@ -45,6 +45,14 @@ public:
 	// look like a place holder 
 	__host__ __device__ inline void make_unit_vector();
 
+	__host__ __device__ inline bool near_zero() const
+	{
+		// Return true if the vector is close to zero in all dimensions 
+		const double s = 1e-8; 
+		return (fabs(e[0]) < s && fabs(e[1]) < s && fabs(e[2]) < s);
+	}
+
+public: 
 	double e[3];
 };
 
@@ -186,23 +194,32 @@ __device__ inline vec3 random_in_unit_sphere(curandState* local_rand_state)
 	return p; 
 }
 
-__device__ inline vec3 random_unit_sphere(curandState* local_rand_state)
+__device__ inline vec3 random_unit_vector(curandState* local_rand_state)
 {
 	return unit_vector(random_in_unit_sphere(local_rand_state));
 }
 
 __device__ inline vec3 random_in_hemisphere(curandState* local_rand_state, const vec3& normal)
 {
-	vec3 in_unit_sphere = random_unit_sphere(local_rand_state);
+	vec3 in_unit_sphere = random_unit_vector(local_rand_state);
 	if (dot(in_unit_sphere, normal) > 0.0)
 		return in_unit_sphere;
 	else 
 		return -in_unit_sphere;
 }
 
-__device__ inline vec3 reflect(const vec3& v, const vec3 n)
+__device__ inline vec3 reflect(const vec3& v, const vec3& n)
 {
 	return v - 2.0 * dot(v, n) * n; 
 }
+
+__device__ inline vec3 refract(const vec3& v, const vec3& n, double ni_over_nt)
+{
+	double cos_theta = fmin(dot(-v, n), 1.0);
+	vec3 r_out_perp = ni_over_nt * (v + cos_theta * n);
+	vec3 r_out_parallel = -sqrt(fabs(1.0 - r_out_perp.squared_length())) * n;
+	return r_out_perp + r_out_parallel;
+}
+
 
 #endif
