@@ -10,8 +10,8 @@ Chapter 11. Positionable Camera<br/>
 Notes:<br/>
 1. Need to define M_PI.<br/>
 2. double half_height = tan(theta / 2);  This assumes viewport distance is 1 and 
-the viewport height, width, lower_left_corner are all calculated accordingly<br/>
-3. The vec3 cross function written wrong. Thus starting from ch02 to here was wrong. This causes the picutre angle too high and the distance shows to be too close.<br/> 
+the viewport height, width, lower_left_corner are all calculated accordingly. <br/>
+3. The vec3 cross function written wrong. Thus starting from ch02 to here was wrong. This causes the picutre angle too high. And the distance to be too close or equivalently FoV too small. <br/> 
 4. Profiling:<br/>
 a) 780 msec <br/>
 b) 2720 msec <br/>
