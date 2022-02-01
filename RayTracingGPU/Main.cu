@@ -56,6 +56,13 @@ __device__ color3 ray_color(const ray& r, hittable** world, curandState *local_r
 	return vec3(0.0, 0.0, 0.0); 
 }
 
+__global__ void rand_init(curandState *rand_state)
+{
+	if (threadIdx.x == 0 && threadIdx.y == 0)
+		curand_init(1984, 0, 0, rand_state); 
+}
+
+
 __global__ void render_init(int max_x, int max_y, curandState* rand_state)
 {
 	int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -63,7 +70,11 @@ __global__ void render_init(int max_x, int max_y, curandState* rand_state)
 	if ((i >= max_x) || (j >= max_y)) return;
 	int pixel_index = (j * max_x + i);
 	// Each thread gets same seed, a different sequence number, no offset 
-	curand_init(1984, pixel_index, 0, &rand_state[pixel_index]);
+	// Original: Each thread gets same seed, a different sequence number, no offset
+	//curand_init(1984, pixel_index, 0, &rand_state[pixel_index]);
+	// BUGFIX, see Issue#2: Each thread gets different seed, same sequence for
+	// performance improvement of about 2x!
+	curand_init(1984+pixel_index, 0, 0, &rand_state[pixel_index]);
 }
 
 __global__ void render(vec3* fb, int max_x, int max_y,
@@ -92,24 +103,49 @@ __global__ void render(vec3* fb, int max_x, int max_y,
 	fb[pixel_index] = col; 
 }
 
-__global__ void create_world(hittable** d_list, hittable** d_world, camera** d_camera, int nx, int ny)
+#define RND (curand_uniform(&local_rand_state)) 
+
+__global__ void create_world(hittable** d_list, hittable** d_world, camera** d_camera, int nx, int ny, curandState *rand_state)
 {
 	if (threadIdx.x == 0 && blockIdx.x == 0)
 	{
+		curandState local_rand_state = *rand_state; 
+		d_list[0] = new sphere(vec3(0, -1000, -1), 1000, new lambertian(color3(0.5, 0.5, 0.5)));
+
+		int i = 1; 
+		for (int a = -11; a < 11; a++)
+		{
+			for (int b = -11; b < 11; b++)
+			{
+				double choose_mat = RND; 
+				vec3 center(a + RND, 0.2, b + RND);
+				if (choose_mat < 0.8)
+				{
+					d_list[i++] = new sphere(center, 0.2, new lambertian(color3(RND * RND, RND * RND, RND * RND)));
+				}
+				else if (choose_mat < 0.95)
+				{
+					d_list[i++] = new sphere(center, 0.2, new metal(color3(0.5 * (1 + RND), 0.5 * (1 + RND), 0.5 * (1 + RND)), 0.5 * RND));
+				}
+				else
+				{
+					d_list[i++] = new sphere(center, 0.2, new dieletric(1.5));
+				}
+			}
+		}
 
 		// this is to replace the vector<hitable> and append 
-		d_list[0] = new sphere(vec3(0, -100.5, -1), 100, new lambertian(color3(0.8, 0.8, 0.0)));
-		d_list[1] = new sphere(vec3(0, 0, -1), 0.5, new lambertian(color3(0.1, 0.2, 0.5)));
-		d_list[2] = new sphere(vec3(-1.0, 0.0, -1), 0.5, new dieletric(1.5));
-		d_list[3] = new sphere(vec3(-1.0, 0.0, -1), -0.45, new dieletric(1.5));
-		d_list[4] = new sphere(vec3(1.0, 0.0, -1), 0.5, new metal(color3(0.8, 0.6, 0.2), 0.0));
-		*d_world = new hittable_list(d_list, 5);
+		d_list[i++] = new sphere(vec3(0.0, 1.0, 0.0), 1.0, new dieletric(1.5));
+		d_list[i++] = new sphere(vec3(-4.0, 1.0, 0.0), 1.0, new lambertian(color3(0.4, 0.2, 0.1)));
+		d_list[i++] = new sphere(vec3(4.0, 1.0, 0.0), 1.0, new metal(color3(0.7, 0.6, 0.5), 0.0));
+		*rand_state = local_rand_state; 
+		*d_world = new hittable_list(d_list, 1+22*22+3);
 		// 
-		point3 lookfrom(3, 3, 2);
-		point3 lookat(0, 0, -1); 
+		point3 lookfrom(13, 2, 3);
+		point3 lookat(0, 0, 0); 
 		vec3 vup(0, 1, 0); 
-		double dist_to_focus = (lookfrom - lookat).length(); 
-		double aperture = 2.0; 
+		double dist_to_focus = 10.0; // (lookfrom - lookat).length();
+		double aperture = 0.1; 
 		*d_camera = new camera(	lookfrom, lookat, vup, 20.0, double(nx)/double(ny), aperture, dist_to_focus);
 	}
 }
@@ -117,7 +153,7 @@ __global__ void create_world(hittable** d_list, hittable** d_world, camera** d_c
 // cast to void** for cudaMemallocManaged 
 __global__ void free_world(hittable** d_list, hittable** d_world, camera** d_camera)
 {
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < 1 + 22 * 22 + 3; i++)
 	{
 		// d_list is a hittable ptr. suppose it does not have mat_ptr. 
 		// this requires to convert to sphere ptr ... this is pretty not manual 
@@ -136,7 +172,7 @@ int main()
 	time0 = clock();
 
 	// Image 
-	int ns = 100; 
+	int ns = 500; 
 	int nx = 1200;
 	int ny = 600;
 	int tx = 8;
@@ -155,21 +191,27 @@ int main()
 	// allocate random state 
 	curandState* d_rand_state; 
 	checkCudaErrors(cudaMalloc((void**)&d_rand_state, num_pixels * sizeof(curandState)));
+	curandState* d_rand_state2;
+	checkCudaErrors(cudaMalloc((void**)&d_rand_state2, 1 * sizeof(curandState)));
+	rand_init << <1, 1 >> > (d_rand_state2);
+	checkCudaErrors(cudaGetLastError());
+	checkCudaErrors(cudaDeviceSynchronize());
 
 	// world 
 	hittable** d_list; 
-	checkCudaErrors(cudaMalloc((void**)&d_list, 5 * sizeof(hittable*)));
+	int num_hitables = 1 + 22 * 22 + 3; 
+	checkCudaErrors(cudaMalloc((void**)&d_list, num_hitables * sizeof(hittable*)));
 	hittable** d_world; 
 	checkCudaErrors(cudaMalloc((void**)&d_world, sizeof(hittable*)));
 	camera** d_camera;
 	checkCudaErrors(cudaMalloc((void**)&d_camera, sizeof(camera*)));
-	create_world << <1, 1 >> > (d_list, d_world, d_camera, nx, ny); 
+	create_world << <1, 1 >> > (d_list, d_world, d_camera, nx, ny, d_rand_state2); 
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
 
 	// Render 
 	dim3 blocks(nx / tx + 1, ny / ty + 1);
-	dim3 threads(tx, ty); 
+	dim3 threads(tx, ty);
 	render_init << <blocks, threads >> > (nx, ny, d_rand_state);
 	checkCudaErrors(cudaGetLastError());
 	checkCudaErrors(cudaDeviceSynchronize());
