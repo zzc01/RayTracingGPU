@@ -9,7 +9,7 @@ Chapter 13.  Where Next?<br/>
   
 Notes:<br/>
 1. The curand_init(). <br/>
-__device__ void curand_init ( unsigned long long seed, unsigned long long sequence, unsigned long long offset, curandState_t *state) <br/>
+\_\_device\_\_ void curand_init ( unsigned long long seed, unsigned long long sequence, unsigned long long offset, curandState_t *state) <br/>
 
 2. The pointer for the curandState. <br/>
 // Pass by pointer is like telling children the address. But does this work if want to bring address information back? <br/>
@@ -17,8 +17,8 @@ __device__ void curand_init ( unsigned long long seed, unsigned long long sequen
 // Pass by reference is like aliasing. <br/>
 curandState* d_rand_state; <br/>
 checkCudaErrors(cudaMalloc((void**)&d_rand_state, num_pixels * sizeof(curandState)));<br/>
-__global__ void render_init(int max_x, int max_y, curandState* rand_state)<br/>
-__global__ void rand_init(curandState *rand_state)<br/>
+\_\_global\_\_ void render_init(int max_x, int max_y, curandState* rand_state)<br/>
+\_\_global\_\_ void rand_init(curandState *rand_state)<br/>
 
 
 3. curand_init(1984+pixel_index, 0, 0, &rand_state[pixel_index]); <br/>
@@ -30,7 +30,7 @@ __global__ void rand_init(curandState *rand_state)<br/>
 
 4. Why passing &local_rand_state? Because passed the value to local_rand_state. But why do this? this seems like if the state value is changed in curand_uniform() 
 the value would not propagated back to the original space. No wonder done a re-assignment later. <br/>
-__global__ void create_world(hittable** d_list, hittable** d_world, camera** d_camera, int nx, int ny, curandState *rand_state)<br/>
+\_\_global\_\_ void create_world(hittable** d_list, hittable** d_world, camera** d_camera, int nx, int ny, curandState *rand_state)<br/>
 curandState local_rand_state = *rand_state; <br/>
 #define RND (curand_uniform(&local_rand_state))<br/>
 *rand_state = local_rand_state; <br/>
