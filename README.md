@@ -1,13 +1,29 @@
-# RayTracingGPU
-A Ray Tracing practice project using GPU to speed up the rendering time. Following "Ray Tracing in One Weekend" and "Accelerated Ray Tracing in One Weekend in CUDA".
+# Ray Tracing with GPU
+A Ray Tracing practice project using GPU to speed up the rendering time. Following "Ray Tracing in One Weekend" [1] and "Accelerated Ray Tracing in One Weekend in CUDA" [2]. This is the ray tracing results of Chapter 13. You can navigate to different chapter's ray tracing results by switching to other branches. 
+<br/><br/>
 
+***
  
-Chapter 13.  Where Next?<br/>
+#### Chapter 13.  Where Next?<br/>
   13.1  A Final Render<br/>
   13.2  Next Steps<br/>
-  
-  
-Notes:<br/>
+
+
+#### Notes:<br/>
+
+In the final render we can compare the ray tracing time with using GPU and without using GPU. As you can see from the table below, using GPU speeds up the time by about 20 times. 
+ 
+<br/>
+
+| Tables        | Samples-per-pixel  |Time       |
+| ------------- |:------------------:|:---------:|
+| Using GPU     | 100                | 0.72 min  |
+| Using GPU     | 500                | 3.57 min  |
+| Without GPU   | 100                | 13.12 min |
+| Without GPU   | 500                | 63.60 min |
+
+<br/>
+
 1. The curand_init(). <br/>
 \_\_device\_\_ void curand_init ( unsigned long long seed, unsigned long long sequence, unsigned long long offset, curandState_t *state) <br/>
 
@@ -44,7 +60,7 @@ b) 1200x600, ns=100, 787410ms (787.41sec)<br/>
 c) 1200x600, ns=500, Timer took 3.81613e+06ms (3816.13sec)	<br/>
  
  
-References:<br/>
-1) https://raytracing.github.io/books/RayTracingInOneWeekend.html#overview
-2) https://developer.nvidia.com/blog/accelerated-ray-tracing-cuda/
+# References:<br/>
+1) Peter Shirley, https://raytracing.github.io/books/RayTracingInOneWeekend.html#overview
+2) Roger Allen, https://developer.nvidia.com/blog/accelerated-ray-tracing-cuda/
 
